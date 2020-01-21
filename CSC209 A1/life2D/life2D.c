@@ -12,4 +12,20 @@ int main(int argc, char **argv) {
     }
 
     // TODO: Implement.
+    int life;
+    int num_rows = atoi(argv[1]);
+    int num_cols = atoi(argv[2]);
+    int board[num_rows * num_cols-1];
+    int count = 0;
+    int state = atoi(argv[3]);
+    while (scanf("%d", &life) != EOF) {
+    	board[count] = life;
+    	count++;
+    }
+    print_state(board, num_rows, num_cols);
+    for (int i = 1; i < state; i++) {
+    	update_state(board, num_rows, num_cols);
+    	print_state(board, num_rows, num_cols);
+    }
+    return 0;
 }
