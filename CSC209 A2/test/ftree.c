@@ -10,64 +10,6 @@
 #include <string.h>
 #include <dirent.h>
 
-
-struct TreeNode *generate_ftree_with_path(const char *fname, const char *path) {
-    struct stat stat_buf;
-    char path_buf[256];
-    sprintf(path_buf, "%s%s", path, fname);
-    if (lstat(path_buf, &stat_buf) == -1) {
-        fprintf(stderr, "The path (%s) does not point to an existing entry!\n", fname);
-        return NULL;
-    }
-    struct TreeNode *tn_ptr = malloc(sizeof(struct TreeNode));
-    tn_ptr -> fname = malloc(strlen(fname) + 1);
-    strcpy(tn_ptr -> fname, fname);
-
-    tn_ptr -> permissions = stat_buf.st_mode & 0777;
-
-    if (S_ISREG(stat_buf.st_mode)) {
-    	tn_ptr -> type = '-';
-        tn_ptr -> contents = NULL;
-    } else if (S_ISDIR(stat_buf.st_mode)){
-        tn_ptr -> type = 'd';
-
-        DIR *d_ptr = opendir(path_buf);
-        if (d_ptr == NULL) {
-            perror("opendir");
-            return NULL;
-        }
-        struct dirent *entry_ptr;
-        entry_ptr = readdir(d_ptr);
-        struct TreeNode *prev = NULL;
-        strcat(path_buf, "/");
-        while (entry_ptr != NULL) {
-            if (entry_ptr->d_name[0] == '.') {
-                entry_ptr = readdir(d_ptr);
-                continue;
-            }
-            printf("%s\n", path_buf);
-            
-            struct TreeNode *curr_tn = generate_ftree_with_path(entry_ptr->d_name, path_buf);
-            if (prev == NULL) {
-                tn_ptr -> contents = curr_tn;
-            } else {
-                prev -> next = curr_tn;
-            }
-            prev = curr_tn;
-            entry_ptr = readdir(d_ptr);
-        }
-        closedir(d_ptr);
-    } else if (S_ISLNK(stat_buf.st_mode)){
-        tn_ptr -> type = 'l';
-        tn_ptr -> contents = NULL;
-    } else {
-        fprintf(stderr, "The path (%s) is undefined type.\n", fname);
-        free(tn_ptr);
-        return NULL;
-    }
-    return tn_ptr;
-}
-
 /*
  * Returns the FTree rooted at the path fname.
  *
@@ -85,8 +27,44 @@ struct TreeNode *generate_ftree(const char *fname) {
     // helper function, the path would be "", since fname is the root
     // of the FTree.  For files at other depths, the path would be the
     // file path from the root to that file.
+    struct stat stat_buf;
+    if (lstat(fname, &stat_buf) == -1) {
+        fprintf(stderr, "The path (%s) does not point to an existing entry!\n", fname);
+        return NULL;
+    }
+    struct TreeNode *tn_ptr = malloc(sizeof(struct TreeNode));
+    strcpy(tn_ptr -> fname, fname);
+    tn_ptr -> permissions = stat_buf.st_mode & 0777;
 
-    return generate_ftree_with_path(fname, "");
+    if (S_ISREG(stat_buf.st_mode)) {
+    	tn_ptr -> type = '-';
+        tn_ptr -> contents = NULL;
+    } else if (S_ISDIR(stat_buf.st_mode)){
+        tn_ptr -> type = 'd';
+        DIR *d_ptr = opendir(fname);
+        if (d_ptr == NULL) {
+            perror("opendir");
+            return NULL;
+        }
+        struct dirent *entry_ptr;
+        entry_ptr = readdir(d_ptr);
+        struct TreeNode *prev = NULL;
+        while (entry_ptr != NULL) {
+            struct TreeNode *curr_tn = generate_ftree(entry_ptr->d_name);
+            tn_ptr -> contents = curr_tn;
+            prev -> next = curr_tn;
+            prev = curr_tn;
+            entry_ptr = readdir(d_ptr);
+        }
+    } else if (S_ISLNK(stat_buf.st_mode)){
+        tn_ptr -> type = 'l';
+        tn_ptr -> contents = NULL;
+    } else {
+        fprintf(stderr, "The path (%s) is undefined type.\n", fname);
+        free(tn_ptr);
+        return NULL;
+    }
+    return tn_ptr;
 }
 
 
@@ -109,10 +87,9 @@ void print_ftree(struct TreeNode *root) {
         printf("%s (%c%o)\n", root->fname, root->type, root->permissions);
     }else{
         printf("===== %s (%c%o) =====\n", root->fname, root->type, root->permissions);
-        depth++;
         struct TreeNode *curr = root -> contents;
         while (curr != NULL){
-            // printf("  ");
+            printf("  ");
             print_ftree(curr);
             curr = curr -> next;
         }
@@ -127,19 +104,5 @@ void print_ftree(struct TreeNode *root) {
 void deallocate_ftree (struct TreeNode *node) {
    
    // Your implementation here.
-    if (node -> type != 'd'){
-        free(node -> fname);
-        free(node);
-    }else{
-        struct TreeNode *curr = node -> contents;
-        struct TreeNode *tmp = NULL;
-        while (curr != NULL){
-            tmp = curr;
-            deallocate_ftree(curr);
-            curr = curr -> next;
-        }
-        free(node -> fname);
-        free(node);
-    }
 
 }
