@@ -10,10 +10,11 @@
 #include <string.h>
 #include <dirent.h>
 
-
 struct TreeNode *generate_ftree_with_path(const char *fname, const char *path) {
     struct stat stat_buf;
     char path_buf[256];
+    printf("path: %s\n", path);
+    printf("fname: %s\n", fname);
     sprintf(path_buf, "%s%s", path, fname);
     if (lstat(path_buf, &stat_buf) == -1) {
         fprintf(stderr, "The path (%s) does not point to an existing entry!\n", fname);
@@ -30,7 +31,7 @@ struct TreeNode *generate_ftree_with_path(const char *fname, const char *path) {
         tn_ptr -> contents = NULL;
     } else if (S_ISDIR(stat_buf.st_mode)){
         tn_ptr -> type = 'd';
-
+        strcat(path_buf, "/");
         DIR *d_ptr = opendir(path_buf);
         if (d_ptr == NULL) {
             perror("opendir");
@@ -39,7 +40,6 @@ struct TreeNode *generate_ftree_with_path(const char *fname, const char *path) {
         struct dirent *entry_ptr;
         entry_ptr = readdir(d_ptr);
         struct TreeNode *prev = NULL;
-        strcat(path_buf, "/");
         while (entry_ptr != NULL) {
             if (entry_ptr->d_name[0] == '.') {
                 entry_ptr = readdir(d_ptr);
@@ -135,8 +135,8 @@ void deallocate_ftree (struct TreeNode *node) {
         struct TreeNode *tmp = NULL;
         while (curr != NULL){
             tmp = curr;
-            deallocate_ftree(curr);
             curr = curr -> next;
+            deallocate_ftree(tmp);
         }
         free(node -> fname);
         free(node);
